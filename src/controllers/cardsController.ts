@@ -5,3 +5,9 @@ export async function createCard(req: Request, res: Response) {
   await cardsService.createCard(req.body);
   res.sendStatus(201);
 }
+
+export async function activateCard(req: Request, res: Response) {
+  await cardsService.activateCard(req.body);
+
+  res.sendStatus(200);
+}

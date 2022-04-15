@@ -16,6 +16,38 @@ export async function createCard(data: any) {
   await cardRepository.insert({ ...cardData, type: cardType, employeeId});
 }
 
+export async function activateCard(data:any) {
+  const { cardId, password, securityCode} = data;
+  const card = await ensureCardIsValid(cardId);
+
+  verifySecurityCode(securityCode, card);
+
+  const hashedPassword = bcrypt.hashSync(password, 10);
+
+  const newCard = {...card, isBlocked: false, password: hashedPassword};
+
+  await cardRepository.update(cardId, newCard);
+}
+
+async function ensureCardIsValid(cardId: number){
+  const card = await cardRepository.findById(cardId);
+
+  if (!card) throw errors.notFound("Card");
+
+  const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
+
+  if (cardIsExpired) throw errors.notAllowed();
+
+  if(!card.isBlocked) throw errors.unauthorized("Card is active so");
+
+  return card;
+}
+
+function verifySecurityCode(securityCode: string, card: cardRepository.Card) {
+  const securityCodeIsValid = bcrypt.compareSync(securityCode, card.securityCode);
+  if (!securityCodeIsValid) throw errors.unauthorized("Security Code");
+}
+
 function validateCardType(type: string) {
   const validTypes = [
     "groceries",
@@ -48,6 +80,7 @@ async function ensureEmployeeExists(employeeId: number) {
 
 function generateCardData(employee: employeeRepository.Employee) {
   const cvv = faker.finance.creditCardCVV();
+  console.log(cvv);
   const creditCardNumber = faker.finance.creditCardNumber('mastercard');
   const expirationDate = dayjs().add(5, "years").format("MM/YY");
   const securityCode = bcrypt.hashSync(cvv, 10);
