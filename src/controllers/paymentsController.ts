@@ -8,3 +8,8 @@ export async function insertPayment(req: Request, res: Response) {
   
   res.sendStatus(201);
 }
+
+export async function insertOnlinePayment(req: Request, res: Response) {
+  
+  res.sendStatus(201);
+}

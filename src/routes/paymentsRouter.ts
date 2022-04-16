@@ -1,14 +1,20 @@
 import { Router } from "express";
-import { insertPayment } from "../controllers/paymentsController.js";
+import * as paymentController from "../controllers/paymentsController.js";
 import validateSchema from "../middlewares/validateSchema.js";
 import schemas from "../schemas/index.js";
 
 const paymentsRouter = Router();
 
 paymentsRouter.post(
-  "/payments",
+  "/payments/point-of-sale",
   validateSchema(schemas.paymentSchema),
-  insertPayment
+  paymentController.insertPayment
+);
+
+paymentsRouter.post(
+  "/payments/online",
+  validateSchema(schemas.onlinePaymentSchema),
+  paymentController.insertOnlinePayment
 );
 
 export default paymentsRouter;

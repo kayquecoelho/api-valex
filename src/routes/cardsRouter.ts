@@ -7,18 +7,21 @@ import schemas from "../schemas/index.js";
 const cardsRouter = Router();
 
 cardsRouter.get("/cards/:id/balance", cardsController.getCardBalance);
+
 cardsRouter.post(
   "/cards",
   validateAPIToken,
   validateSchema(schemas.cardRequestSchema),
   cardsController.createCard
 );
-cardsRouter.post(
+
+cardsRouter.patch(
   "/cards/:id/activate",
   validateSchema(schemas.activateCardSchema),
   cardsController.activateCard
 );
-cardsRouter.post(
+
+cardsRouter.patch(
   "/cards/:id/block",
   validateSchema(schemas.blockCardSchema),
   cardsController.blockCard
