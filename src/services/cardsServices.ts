@@ -20,16 +20,28 @@ export async function createCard(data: any) {
 }
 
 export async function activateCard(data:any) {
-  const { cardId, password, securityCode} = data;
-  const card = await ensureCardIsValid(cardId);
+  const { cardId, password, securityCode } = data;
+  const card = await ensureCardIsValid(cardId, false);
 
   verifySecurityCode(securityCode, card);
 
   const hashedPassword = bcrypt.hashSync(password, 10);
 
-  const newCard = {...card, isBlocked: false, password: hashedPassword};
+  const newCard = { isBlocked: false, password: hashedPassword };
 
   await cardRepository.update(cardId, newCard);
+}
+
+export async function blockCard(data: any) {
+  const { cardId, password } = data;
+
+  const card = await ensureCardIsValid(cardId, true);
+
+  if (!bcrypt.compareSync(password, card.password)) {
+    throw errors.unauthorized("Password");
+  }
+
+  await cardRepository.update(cardId, { isBlocked: true });
 }
 
 export async function getCardBalance(cardId: number) {
@@ -58,14 +70,18 @@ async function calculateBalance(cardId: number) {
   }
 }
 
-async function ensureCardIsValid(cardId: number){
+async function ensureCardIsValid(cardId: number, blockVerification: boolean){
   const card = await findCard(cardId);
 
   const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
 
   if (cardIsExpired) throw errors.notAllowed();
 
-  if(!card.isBlocked) throw errors.unauthorized("Card is active so");
+  if (blockVerification) {
+    if(card.isBlocked) throw errors.unauthorized("Card is blocked so");
+  } else {
+    if(!card.isBlocked) throw errors.unauthorized("Card is active so");
+  }
 
   return card;
 }

@@ -26,3 +26,13 @@ export async function getCardBalance(req: Request, res: Response) {
 
   res.send(result);
 }
+
+export async function blockCard(req: Request, res: Response) {
+  const cardId = Number(req.params.id);
+
+  if (isNaN(cardId) || cardId <= 0) return res.sendStatus(422);
+  
+  await cardsService.blockCard({...req.body, cardId});
+
+  res.sendStatus(200);
+}

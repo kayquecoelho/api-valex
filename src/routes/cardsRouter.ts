@@ -1,13 +1,27 @@
 import { Router } from "express";
-import { activateCard, createCard, getCardBalance } from "../controllers/cardsController.js";
+import * as cardsController from "../controllers/cardsController.js";
 import { validateAPIToken } from "../middlewares/validateAPIToken.js";
 import validateSchema from "../middlewares/validateSchema.js";
 import schemas from "../schemas/index.js";
 
 const cardsRouter = Router();
 
-cardsRouter.post("/cards", validateAPIToken, validateSchema(schemas.cardRequestSchema), createCard);
-cardsRouter.post("/cards/:id/activate", validateSchema(schemas.activateCardSchema), activateCard);
-cardsRouter.get("/cards/:id/balance", getCardBalance);
+cardsRouter.get("/cards/:id/balance", cardsController.getCardBalance);
+cardsRouter.post(
+  "/cards",
+  validateAPIToken,
+  validateSchema(schemas.cardRequestSchema),
+  cardsController.createCard
+);
+cardsRouter.post(
+  "/cards/:id/activate",
+  validateSchema(schemas.activateCardSchema),
+  cardsController.activateCard
+);
+cardsRouter.post(
+  "/cards/:id/block",
+  validateSchema(schemas.blockCardSchema),
+  cardsController.blockCard
+);
 
 export default cardsRouter;
