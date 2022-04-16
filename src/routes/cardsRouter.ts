@@ -7,7 +7,7 @@ import schemas from "../schemas/index.js";
 const cardsRouter = Router();
 
 cardsRouter.post("/cards", validateAPIToken, validateSchema(schemas.cardRequestSchema), createCard);
-cardsRouter.post("/cards/activate", validateSchema(schemas.activateCardSchema), activateCard);
+cardsRouter.post("/cards/:id/activate", validateSchema(schemas.activateCardSchema), activateCard);
 cardsRouter.get("/cards/:id/balance", getCardBalance);
 
 export default cardsRouter;

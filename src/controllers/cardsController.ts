@@ -7,7 +7,11 @@ export async function createCard(req: Request, res: Response) {
 }
 
 export async function activateCard(req: Request, res: Response) {
-  await cardsService.activateCard(req.body);
+  const cardId = Number(req.params.id);
+
+  if (isNaN(cardId) || cardId <= 0) return res.sendStatus(422);
+  
+  await cardsService.activateCard({...req.body, cardId});
 
   res.sendStatus(200);
 }

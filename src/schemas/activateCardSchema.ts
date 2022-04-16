@@ -1,7 +1,6 @@
 import joi from "joi";
 
 const activateCardSchema = joi.object({
-    cardId: joi.number().integer().positive().required(),
     password: joi.string().pattern(/^[0-9]{4}$/).required(),
     securityCode: joi.string().length(3).required()
 });
