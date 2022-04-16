@@ -1,9 +1,12 @@
-import * as errors from "../errors/errors.js";
-import * as employeeRepository from "../repositories/employeeRepository.js";
-import * as cardRepository from "../repositories/cardRepository.js";
 import { faker } from '@faker-js/faker';
 import dayjs from "dayjs";
 import bcrypt from "bcrypt";
+
+import * as errors from "../errors/errors.js";
+import * as employeeRepository from "../repositories/employeeRepository.js";
+import * as cardRepository from "../repositories/cardRepository.js";
+import * as paymentRepository from "../repositories/paymentRepository.js";
+import * as rechargeRepository from "../repositories/rechargeRepository.js";
 
 export async function createCard(data: any) {
   const { cardType, employeeId } = data;
@@ -29,10 +32,34 @@ export async function activateCard(data:any) {
   await cardRepository.update(cardId, newCard);
 }
 
-async function ensureCardIsValid(cardId: number){
-  const card = await cardRepository.findById(cardId);
+export async function getCardBalance(cardId: number) {
+  await findCard(cardId);
 
-  if (!card) throw errors.notFound("Card");
+  const balance = await calculateBalance(cardId);
+
+  return balance;
+}
+
+async function calculateBalance(cardId: number) {
+  function calculateTotal(array: any[]) {
+    return array.reduce((total, transaction) => total + transaction.amount, 0);
+  }
+
+  const payments = await paymentRepository.findByCardId(cardId);
+  const paymentsAmount = calculateTotal(payments);
+
+  const recharges = await rechargeRepository.findByCardId(cardId);
+  const rechargesAmount = calculateTotal(recharges);
+
+  return {
+    balance: rechargesAmount - paymentsAmount,
+    transactions: payments,
+    recharges
+  }
+}
+
+async function ensureCardIsValid(cardId: number){
+  const card = await findCard(cardId);
 
   const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
 
@@ -40,6 +67,13 @@ async function ensureCardIsValid(cardId: number){
 
   if(!card.isBlocked) throw errors.unauthorized("Card is active so");
 
+  return card;
+}
+
+async function findCard(cardId: number) {
+  const card = await cardRepository.findById(cardId);
+
+  if (!card) throw errors.notFound("Card");
   return card;
 }
 

@@ -11,3 +11,14 @@ export async function activateCard(req: Request, res: Response) {
 
   res.sendStatus(200);
 }
+
+export async function getCardBalance(req: Request, res: Response) {
+  const { id } = req.params;
+  const idNum = Number(id);
+
+  if(isNaN(idNum)) return res.sendStatus(422);
+
+  const result = await cardsService.getCardBalance(idNum);
+
+  res.send(result);
+}
