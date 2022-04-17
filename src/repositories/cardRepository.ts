@@ -122,3 +122,13 @@ export async function update(id: number, cardData: CardUpdateData) {
 export async function remove(id: number) {
   connection.query<any, [number]>("DELETE FROM cards WHERE id=$1", [id]);
 }
+
+export async function findDigitalById(id: number) {
+  const result = await connection.query<Card, [number]>(
+    `SELECT * FROM cards 
+      WHERE "originalCardId"=$1 AND "isVirtual"=true`,
+    [id]
+  );
+
+  return result.rows[0];
+}

@@ -9,10 +9,16 @@ const cardsRouter = Router();
 cardsRouter.get("/cards/:id/balance", cardsController.getCardBalance);
 
 cardsRouter.post(
-  "/cards",
+  "/cards/physical",
   validateAPIToken,
   validateSchema(schemas.cardRequestSchema),
   cardsController.createCard
+);
+
+cardsRouter.post(
+  "/cards/digital",
+  validateSchema(schemas.digitalCardSchema),
+  cardsController.createDigitalCard
 );
 
 cardsRouter.patch(

@@ -1,35 +1,58 @@
 import { faker } from '@faker-js/faker';
 import dayjs from "dayjs";
-import bcrypt from "bcrypt";
 
 import * as errors from "../errors/errors.js";
 import * as employeeRepository from "../repositories/employeeRepository.js";
 import * as cardRepository from "../repositories/cardRepository.js";
 import * as paymentRepository from "../repositories/paymentRepository.js";
 import * as rechargeRepository from "../repositories/rechargeRepository.js";
+import * as bcryptService from "./bcryptService.js";
 
 export async function createCard(data: any) {
   const { cardType, employeeId } = data;
 
   validateCardType(cardType);
+
   const employee = await ensureEmployeeExists(employeeId);
+
   await ensureEmployeeHasNoCards(cardType, employeeId);
 
   const cardData = generateCardData(employee);
+
   await cardRepository.insert({ ...cardData, type: cardType, employeeId});
+}
+
+export async function createDigitalCard(data: any) {
+  const { cardId, password } = data;
+
+  const card = await findCardById(cardId);
+
+  await ensureHasNoDigitalCard(card);
+
+  bcryptService.validateAccess(password, card.password);
+
+  const digitalCardData = generateDigitalCard(card);
+
+  await cardRepository.insert(digitalCardData);
+}
+
+async function ensureHasNoDigitalCard(card: cardRepository.Card) {
+  const digitalCard = await cardRepository.findDigitalById(card.id);
+
+  if (digitalCard)
+    throw errors.conflict("Digital card");
 }
 
 export async function activateCard(data:any) {
   const { cardId, password, securityCode } = data;
+
   const card = await ensureCardIsValid(cardId, false);
 
-  verifySecurityCode(securityCode, card);
+  bcryptService.validateAccess(securityCode, card.securityCode);
 
-  const hashedPassword = bcrypt.hashSync(password, 10);
+  const hashedPassword = bcryptService.encrypt(password);
 
-  const newCard = { isBlocked: false, password: hashedPassword };
-
-  await cardRepository.update(cardId, newCard);
+  await cardRepository.update(cardId, { isBlocked: false, password: hashedPassword });
 }
 
 export async function blockCard(data: any) {
@@ -37,15 +60,13 @@ export async function blockCard(data: any) {
 
   const card = await ensureCardIsValid(cardId, true);
 
-  if (!bcrypt.compareSync(password, card.password)) {
-    throw errors.unauthorized("Password");
-  }
+  bcryptService.validateAccess(password, card.password);
 
   await cardRepository.update(cardId, { isBlocked: true });
 }
 
 export async function getCardBalance(cardId: number) {
-  await findCard(cardId);
+  await findCardById(cardId);
 
   const balance = await calculateBalance(cardId);
 
@@ -71,7 +92,7 @@ async function calculateBalance(cardId: number) {
 }
 
 async function ensureCardIsValid(cardId: number, blockVerification: boolean){
-  const card = await findCard(cardId);
+  const card = await findCardById(cardId);
 
   const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
 
@@ -86,36 +107,18 @@ async function ensureCardIsValid(cardId: number, blockVerification: boolean){
   return card;
 }
 
-async function findCard(cardId: number) {
+async function findCardById(cardId: number) {
   const card = await cardRepository.findById(cardId);
 
   if (!card) throw errors.notFound("Card");
   return card;
 }
 
-function verifySecurityCode(securityCode: string, card: cardRepository.Card) {
-  const securityCodeIsValid = bcrypt.compareSync(securityCode, card.securityCode);
-  if (!securityCodeIsValid) throw errors.unauthorized("Security Code");
-}
-
-function validateCardType(type: string) {
-  const validTypes = [
-    "groceries",
-    "restaurant",
-    "transport",
-    "education",
-    "health",
-  ];
-
-  if (!validTypes.includes(type))
-    throw errors.unprocessableEntity(`CardType '${type}'`);
-}
-
 async function ensureEmployeeHasNoCards(
   type: cardRepository.TransactionTypes,
   employeeId: number
 ) {
-  const card = await cardRepository.findByTypeAndEmployeeId(type,employeeId);
+  const card = await cardRepository.findByTypeAndEmployeeId(type, employeeId);
   
   if (card) throw errors.conflict(`Type of card to employee`);
 }
@@ -133,7 +136,7 @@ function generateCardData(employee: employeeRepository.Employee) {
   console.log(cvv);
   const creditCardNumber = faker.finance.creditCardNumber('mastercard');
   const expirationDate = dayjs().add(5, "years").format("MM/YY");
-  const securityCode = bcrypt.hashSync(cvv, 10);
+  const securityCode = bcryptService.encrypt(cvv);
   const cardholderName = formatName(employee.fullName);
 
   return {
@@ -144,6 +147,26 @@ function generateCardData(employee: employeeRepository.Employee) {
     isBlocked: true,
     expirationDate
   }
+}
+
+function generateDigitalCard(card: cardRepository.Card) {
+  const cvv = faker.finance.creditCardCVV();
+  const securityCode = bcryptService.encrypt(cvv);
+
+  const digitalCard = {
+    number: faker.finance.creditCardNumber('mastercard'),
+    password: card.password,
+    securityCode,
+    expirationDate: dayjs().add(5, "years").format("MM/YY"),
+    isBlocked: false,
+    isVirtual: true,
+    originalCardId: card.id,
+    type: card.type,
+    cardholderName: card.cardholderName,
+    employeeId: card.employeeId
+  };
+  
+  return digitalCard;
 }
 
 function formatName(name: string) {
@@ -157,4 +180,17 @@ function formatName(name: string) {
   }).join(" ");
   
   return formattedName.toUpperCase();
+}
+
+function validateCardType(type: string) {
+  const validTypes = [
+    "groceries",
+    "restaurant",
+    "transport",
+    "education",
+    "health",
+  ];
+
+  if (!validTypes.includes(type))
+    throw errors.unprocessableEntity(`CardType '${type}'`);
 }

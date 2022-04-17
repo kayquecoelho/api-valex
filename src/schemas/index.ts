@@ -4,6 +4,7 @@ import rechargesSchema from "./rechargesSchema.js";
 import paymentSchema from "./paymentSchema.js";
 import blockCardSchema from "./blockCardSchema.js";
 import onlinePaymentSchema from "./onlinePaymentSchema.js";
+import digitalCardSchema from "./digitalCardSchema.js";
 
 const schemas = {
   activateCardSchema,
@@ -11,7 +12,8 @@ const schemas = {
   rechargesSchema,
   paymentSchema,
   blockCardSchema,
-  onlinePaymentSchema
+  onlinePaymentSchema,
+  digitalCardSchema
 }
 
 export default schemas;

@@ -3,6 +3,13 @@ import * as cardsService from "../services/cardsServices.js";
 
 export async function createCard(req: Request, res: Response) {
   await cardsService.createCard(req.body);
+
+  res.sendStatus(201);
+}
+
+export async function createDigitalCard(req: Request, res: Response) {
+  await cardsService.createDigitalCard(req.body);
+
   res.sendStatus(201);
 }
 

@@ -1,11 +1,11 @@
 import dayjs from "dayjs";
-import bcrypt from "bcrypt";
 
 import * as cardService from "../services/cardsServices.js";
 import * as cardRepository from "../repositories/cardRepository.js";
 import * as paymentRepository from "../repositories/paymentRepository.js";
 import * as businessRepository from "../repositories/businessRepository.js";
 import * as errors from "../errors/errors.js";
+import * as bcryptService from "./bcryptService.js";
 
 export async function insertPayment(data: any) {
   const { cardId, amountPaid, password, businessId } = data;
@@ -14,7 +14,7 @@ export async function insertPayment(data: any) {
 
   ensureCardIsActiveAndNotExpired(card);
 
-  validateAccess(password, card.password);
+  bcryptService.validateAccess(password, card.password);
 
   await ensureBusinessIsValid(businessId, card.type);
 
@@ -30,7 +30,7 @@ export async function insertOnlinePayment(data: any) {
 
   ensureCardIsActiveAndNotExpired(card);
 
-  validateAccess(securityCode, card.securityCode);
+  bcryptService.validateAccess(securityCode, card.securityCode);
 
   await ensureBusinessIsValid(businessId, card.type);
 
@@ -79,9 +79,4 @@ async function findCardByDetails(cardData: any) {
   if (!card) throw errors.notFound("Card");
 
   return card;
-}
-
-function validateAccess(key: string, encryptedKey: string) {
-  if (!bcrypt.compareSync(key, encryptedKey))
-    throw errors.unauthorized("Security code");
 }
