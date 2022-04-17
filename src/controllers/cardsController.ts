@@ -43,3 +43,14 @@ export async function blockCard(req: Request, res: Response) {
 
   res.sendStatus(200);
 }
+
+export async function deleteDigitalCard(req: Request, res: Response) {
+  const cardId = Number(req.params.id);
+  const { password } = req.body;
+
+  if (isNaN(cardId) || cardId <= 0 || !password) return res.sendStatus(422);
+
+  await cardsService.deleteDigitalCard(cardId, password);
+
+  res.sendStatus(200);
+}

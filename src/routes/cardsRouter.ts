@@ -33,4 +33,9 @@ cardsRouter.patch(
   cardsController.blockCard
 );
 
+cardsRouter.delete(
+  "/cards/digital/:id",
+  cardsController.deleteDigitalCard
+)
+
 export default cardsRouter;

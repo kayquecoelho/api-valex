@@ -36,13 +36,6 @@ export async function createDigitalCard(data: any) {
   await cardRepository.insert(digitalCardData);
 }
 
-async function ensureHasNoDigitalCard(card: cardRepository.Card) {
-  const digitalCard = await cardRepository.findDigitalById(card.id);
-
-  if (digitalCard)
-    throw errors.conflict("Digital card");
-}
-
 export async function activateCard(data:any) {
   const { cardId, password, securityCode } = data;
 
@@ -71,6 +64,23 @@ export async function getCardBalance(cardId: number) {
   const balance = await calculateBalance(cardId);
 
   return balance;
+}
+
+export async function deleteDigitalCard(cardId: number, password: string) {
+  const card = await findCardById(cardId);
+
+  if (!card.isVirtual) throw errors.unauthorized("Card is not virtual so");
+
+  bcryptService.validateAccess(password, card.password);
+
+  cardRepository.remove(card.id);
+}
+
+async function ensureHasNoDigitalCard(card: cardRepository.Card) {
+  const digitalCard = await cardRepository.findDigitalById(card.id);
+
+  if (digitalCard)
+    throw errors.conflict("Digital card");
 }
 
 async function calculateBalance(cardId: number) {
@@ -111,6 +121,7 @@ async function findCardById(cardId: number) {
   const card = await cardRepository.findById(cardId);
 
   if (!card) throw errors.notFound("Card");
+
   return card;
 }
 
