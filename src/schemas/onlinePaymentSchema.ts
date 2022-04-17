@@ -1,9 +1,9 @@
 import joi from "joi";
 
-const regex = /^[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}$/;
+const regex = /^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}$/;
 
 const onlinePaymentSchema = joi.object({
-  name: joi.string().required(), 
+  holderName: joi.string().required(), 
   number: joi.string().pattern(regex).required(),
   securityCode: joi.string().length(3).required(),
   expirationDate: joi.date().required(), 

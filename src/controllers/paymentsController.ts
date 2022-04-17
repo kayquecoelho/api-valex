@@ -10,6 +10,7 @@ export async function insertPayment(req: Request, res: Response) {
 }
 
 export async function insertOnlinePayment(req: Request, res: Response) {
+  await paymentsService.insertOnlinePayment(req.body);
   
   res.sendStatus(201);
 }
