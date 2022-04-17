@@ -48,7 +48,11 @@ export async function deleteDigitalCard(req: Request, res: Response) {
   const cardId = Number(req.params.id);
   const { password } = req.body;
 
-  if (isNaN(cardId) || cardId <= 0 || !password) return res.sendStatus(422);
+  if (isNaN(cardId) 
+    || cardId <= 0 
+    || !password
+    || typeof password !== "string"
+    ) return res.sendStatus(422);
 
   await cardsService.deleteDigitalCard(cardId, password);
 

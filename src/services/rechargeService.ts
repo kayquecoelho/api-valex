@@ -14,7 +14,9 @@ async function ensureCardIsValid(cardId: number){
 
   const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
 
-  if (cardIsExpired) throw errors.notAllowed();
+  if (cardIsExpired) throw errors.unauthorized("Card is expired so");
+
+  if (card.isVirtual) throw errors.unauthorized("Card is virtual so")
 
   return card;
 }

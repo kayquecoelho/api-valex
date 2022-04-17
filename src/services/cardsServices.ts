@@ -1,4 +1,4 @@
-import { faker } from '@faker-js/faker';
+import { faker } from "@faker-js/faker";
 import dayjs from "dayjs";
 
 import * as errors from "../errors/errors.js";
@@ -19,7 +19,7 @@ export async function createCard(data: any) {
 
   const cardData = generateCardData(employee);
 
-  await cardRepository.insert({ ...cardData, type: cardType, employeeId});
+  await cardRepository.insert({ ...cardData, type: cardType, employeeId });
 }
 
 export async function createDigitalCard(data: any) {
@@ -36,7 +36,7 @@ export async function createDigitalCard(data: any) {
   await cardRepository.insert(digitalCardData);
 }
 
-export async function activateCard(data:any) {
+export async function activateCard(data: any) {
   const { cardId, password, securityCode } = data;
 
   const card = await ensureCardIsValid(cardId, false);
@@ -45,7 +45,10 @@ export async function activateCard(data:any) {
 
   const hashedPassword = bcryptService.encrypt(password);
 
-  await cardRepository.update(cardId, { isBlocked: false, password: hashedPassword });
+  await cardRepository.update(cardId, {
+    isBlocked: false,
+    password: hashedPassword,
+  });
 }
 
 export async function blockCard(data: any) {
@@ -59,9 +62,15 @@ export async function blockCard(data: any) {
 }
 
 export async function getCardBalance(cardId: number) {
-  await findCardById(cardId);
+  const card = await findCardById(cardId);
 
-  const balance = await calculateBalance(cardId);
+  let balance: any;
+
+  if (card.isVirtual) {
+    balance = await calculateBalance(card.originalCardId);
+  } else {
+    balance = await calculateBalance(card.id);
+  }
 
   return balance;
 }
@@ -79,8 +88,7 @@ export async function deleteDigitalCard(cardId: number, password: string) {
 async function ensureHasNoDigitalCard(card: cardRepository.Card) {
   const digitalCard = await cardRepository.findDigitalById(card.id);
 
-  if (digitalCard)
-    throw errors.conflict("Digital card");
+  if (digitalCard) throw errors.conflict("Digital card");
 }
 
 async function calculateBalance(cardId: number) {
@@ -97,21 +105,23 @@ async function calculateBalance(cardId: number) {
   return {
     balance: rechargesAmount - paymentsAmount,
     transactions: payments,
-    recharges
-  }
+    recharges,
+  };
 }
 
-async function ensureCardIsValid(cardId: number, blockVerification: boolean){
+async function ensureCardIsValid(cardId: number, blockVerification: boolean) {
   const card = await findCardById(cardId);
 
   const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
 
   if (cardIsExpired) throw errors.notAllowed();
 
+  if (card.isVirtual) throw errors.unauthorized("Card is virtual so");
+
   if (blockVerification) {
-    if(card.isBlocked) throw errors.unauthorized("Card is blocked so");
+    if (card.isBlocked) throw errors.unauthorized("Card is blocked so");
   } else {
-    if(!card.isBlocked) throw errors.unauthorized("Card is active so");
+    if (!card.isBlocked) throw errors.unauthorized("Card is active so");
   }
 
   return card;
@@ -130,13 +140,13 @@ async function ensureEmployeeHasNoCards(
   employeeId: number
 ) {
   const card = await cardRepository.findByTypeAndEmployeeId(type, employeeId);
-  
+
   if (card) throw errors.conflict(`Type of card to employee`);
 }
 
 async function ensureEmployeeExists(employeeId: number) {
   const employee = await employeeRepository.findById(employeeId);
-  
+
   if (employee) return employee;
 
   throw errors.notFound("Employee");
@@ -145,19 +155,19 @@ async function ensureEmployeeExists(employeeId: number) {
 function generateCardData(employee: employeeRepository.Employee) {
   const cvv = faker.finance.creditCardCVV();
   console.log(cvv);
-  const creditCardNumber = faker.finance.creditCardNumber('mastercard');
+  const creditCardNumber = faker.finance.creditCardNumber("mastercard");
   const expirationDate = dayjs().add(5, "years").format("MM/YY");
   const securityCode = bcryptService.encrypt(cvv);
   const cardholderName = formatName(employee.fullName);
 
   return {
-    number: creditCardNumber, 
-    securityCode, 
+    number: creditCardNumber,
+    securityCode,
     cardholderName,
     isVirtual: false,
     isBlocked: true,
-    expirationDate
-  }
+    expirationDate,
+  };
 }
 
 function generateDigitalCard(card: cardRepository.Card) {
@@ -165,7 +175,7 @@ function generateDigitalCard(card: cardRepository.Card) {
   const securityCode = bcryptService.encrypt(cvv);
 
   const digitalCard = {
-    number: faker.finance.creditCardNumber('mastercard'),
+    number: faker.finance.creditCardNumber("mastercard"),
     password: card.password,
     securityCode,
     expirationDate: dayjs().add(5, "years").format("MM/YY"),
@@ -174,22 +184,24 @@ function generateDigitalCard(card: cardRepository.Card) {
     originalCardId: card.id,
     type: card.type,
     cardholderName: card.cardholderName,
-    employeeId: card.employeeId
+    employeeId: card.employeeId,
   };
-  
+
   return digitalCard;
 }
 
 function formatName(name: string) {
-  const nameArr = name.split(" ").filter(n => n.length > 2 );
+  const nameArr = name.split(" ").filter((n) => n.length > 2);
 
   if (nameArr.length < 3) return nameArr.join(" ").toUpperCase();
 
-  const formattedName = nameArr.map((n, i) => {
-    if (i !== 0 && i !== nameArr.length - 1) return n[0];
-    return n;
-  }).join(" ");
-  
+  const formattedName = nameArr
+    .map((n, i) => {
+      if (i !== 0 && i !== nameArr.length - 1) return n[0];
+      return n;
+    })
+    .join(" ");
+
   return formattedName.toUpperCase();
 }
 

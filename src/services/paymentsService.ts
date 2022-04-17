@@ -14,6 +14,8 @@ export async function insertPayment(data: any) {
 
   ensureCardIsActiveAndNotExpired(card);
 
+  if (card.isVirtual) throw errors.unauthorized("Card is virtual");
+
   bcryptService.validateAccess(password, card.password);
 
   await ensureBusinessIsValid(businessId, card.type);
@@ -34,9 +36,11 @@ export async function insertOnlinePayment(data: any) {
 
   await ensureBusinessIsValid(businessId, card.type);
 
-  await checkCardBalance(amountPaid, card.id);
-
-  await paymentRepository.insert({ cardId: card.id, amount: amountPaid, businessId });  
+  if (card.isVirtual) { 
+    await checkBalanceAndPersistPurchase(amountPaid, card.originalCardId, businessId);  
+  } else {
+    await checkBalanceAndPersistPurchase(amountPaid, card.id, businessId);
+  } 
 }
 
 async function checkCardBalance(amountPaid: number, cardId: number) {
@@ -79,4 +83,10 @@ async function findCardByDetails(cardData: any) {
   if (!card) throw errors.notFound("Card");
 
   return card;
+}
+
+async function checkBalanceAndPersistPurchase(amountPaid: number, cardId: number, businessId: number) {
+  await checkCardBalance(amountPaid, cardId);
+
+  await paymentRepository.insert({ cardId, amount: amountPaid, businessId });
 }
