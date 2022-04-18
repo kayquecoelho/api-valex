@@ -34,7 +34,7 @@ cardsRouter.patch(
 );
 
 cardsRouter.delete(
-  "/cards/digital/:id",
+  "/cards/:id",
   cardsController.deleteDigitalCard
 )
 

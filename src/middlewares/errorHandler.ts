@@ -6,8 +6,6 @@ export default function errorHandler(
   res: Response,
   next: NextFunction
 ) {
-  console.log(error);
-
   if (error.type === "error_unauthorized") {
     return res.status(401).send(error.message);
   }
@@ -20,6 +18,7 @@ export default function errorHandler(
   if (error.type === "error_unprocessable_entity") {
     return res.status(422).send(error.message);
   }
-
+  
+  console.log(error);
   res.sendStatus(500);
 }

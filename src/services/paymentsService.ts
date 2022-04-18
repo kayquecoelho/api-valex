@@ -12,9 +12,9 @@ export async function insertPayment(data: any) {
 
   const card = await findCardById(cardId);
 
-  ensureCardIsActiveAndNotExpired(card);
-
   if (card.isVirtual) throw errors.unauthorized("Card is virtual");
+
+  ensureCardIsActiveAndNotExpired(card);
 
   bcryptService.validateAccess(password, card.password);
 

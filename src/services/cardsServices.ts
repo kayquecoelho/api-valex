@@ -114,7 +114,7 @@ async function ensureCardIsValid(cardId: number, blockVerification: boolean) {
 
   const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
 
-  if (cardIsExpired) throw errors.notAllowed();
+  if (cardIsExpired) throw errors.unauthorized("Card is expired so")
 
   if (card.isVirtual) throw errors.unauthorized("Card is virtual so");
 
@@ -154,7 +154,6 @@ async function ensureEmployeeExists(employeeId: number) {
 
 function generateCardData(employee: employeeRepository.Employee) {
   const cvv = faker.finance.creditCardCVV();
-  console.log(cvv);
   const creditCardNumber = faker.finance.creditCardNumber("mastercard");
   const expirationDate = dayjs().add(5, "years").format("MM/YY");
   const securityCode = bcryptService.encrypt(cvv);

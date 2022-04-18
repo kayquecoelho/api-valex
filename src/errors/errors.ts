@@ -13,6 +13,3 @@ export function notFound(entity: string) {
 export function conflict(entity: string) {
   return { type: "error_conflict", message: `${entity} already exists!`};
 }
-export function notAllowed() {
-  return { type: "error_not_allowed", message: `Card is expired!`};
-}
