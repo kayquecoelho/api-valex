@@ -51,7 +51,7 @@ async function checkCardBalance(amountPaid: number, cardId: number) {
 }
 
 function ensureCardIsActiveAndNotExpired(card: cardRepository.Card) {
-  const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
+  const cardIsExpired = dayjs(card.expirationDate, "MM/YY").isAfter(dayjs());
 
   if (cardIsExpired)
     throw errors.unauthorized("Card is expired so");

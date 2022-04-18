@@ -12,7 +12,7 @@ export async function insertRecharge(cardId: number, amount: number) {
 async function ensureCardIsValid(cardId: number){
   const card = await findCard(cardId);
 
-  const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
+  const cardIsExpired = dayjs(card.expirationDate, "MM/YY").isAfter(dayjs());
 
   if (cardIsExpired) throw errors.unauthorized("Card is expired so");
 

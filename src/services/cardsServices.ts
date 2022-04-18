@@ -112,7 +112,7 @@ async function calculateBalance(cardId: number) {
 async function ensureCardIsValid(cardId: number, blockVerification: boolean) {
   const card = await findCardById(cardId);
 
-  const cardIsExpired = dayjs(card.expirationDate).isAfter(dayjs());
+  const cardIsExpired = dayjs(card.expirationDate, "MM/YY").isAfter(dayjs());
 
   if (cardIsExpired) throw errors.unauthorized("Card is expired so")
 
