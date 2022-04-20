@@ -1,5 +1,3 @@
-import dayjs from "dayjs";
-
 import * as cardService from "../services/cardsServices.js";
 import * as cardRepository from "../repositories/cardRepository.js";
 import * as paymentRepository from "../repositories/paymentRepository.js";
@@ -7,7 +5,18 @@ import * as businessRepository from "../repositories/businessRepository.js";
 import * as errors from "../errors/errors.js";
 import * as bcryptService from "./bcryptService.js";
 
-export async function insertPayment(data: any) {
+interface Payment {
+  cardId: number;
+  amountPaid: number;
+  password: string;
+  businessId: number;
+  securityCode: string;
+}
+
+type POSPayment = Omit<Payment, "securityCode">;
+type OnlinePayment = Omit<Omit<Payment, "password">, "cardId">;
+
+export async function insertPayment(data: POSPayment) {
   const { cardId, amountPaid, password, businessId } = data;
 
   const card = await findCardById(cardId);
@@ -25,7 +34,7 @@ export async function insertPayment(data: any) {
   await paymentRepository.insert({ cardId, amount: amountPaid, businessId });
 }
 
-export async function insertOnlinePayment(data: any) {
+export async function insertOnlinePayment(data: OnlinePayment) {
   const { securityCode, businessId, amountPaid } = data;
 
   const card = await findCardByDetails(data);
@@ -51,10 +60,7 @@ async function checkCardBalance(amountPaid: number, cardId: number) {
 }
 
 function ensureCardIsActiveAndNotExpired(card: cardRepository.Card) {
-  const cardIsExpired = dayjs(card.expirationDate, "MM/YY").isAfter(dayjs());
-
-  if (cardIsExpired)
-    throw errors.unauthorized("Card is expired so");
+  cardService.ensureCardIsNotExpired(card);
 
   if (card.isBlocked)
     throw errors.unauthorized("Card is blocked so");

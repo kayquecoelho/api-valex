@@ -1,5 +1,7 @@
 import { faker } from "@faker-js/faker";
 import dayjs from "dayjs";
+var customParseFormat = require('dayjs/plugin/customParseFormat');
+dayjs.extend(customParseFormat);
 
 import * as errors from "../errors/errors.js";
 import * as employeeRepository from "../repositories/employeeRepository.js";
@@ -8,10 +10,13 @@ import * as paymentRepository from "../repositories/paymentRepository.js";
 import * as rechargeRepository from "../repositories/rechargeRepository.js";
 import * as bcryptService from "./bcryptService.js";
 
-export async function createCard(data: any) {
-  const { cardType, employeeId } = data;
+export interface CreateCard {
+  cardType: cardRepository.TransactionTypes;
+  employeeId: number
+}
 
-  validateCardType(cardType);
+export async function createCard(data: CreateCard) {
+  const { cardType, employeeId } = data;
 
   const employee = await ensureEmployeeExists(employeeId);
 
@@ -22,7 +27,45 @@ export async function createCard(data: any) {
   await cardRepository.insert({ ...cardData, type: cardType, employeeId });
 }
 
-export async function createDigitalCard(data: any) {
+async function ensureEmployeeExists(employeeId: number) {
+  const employee = await employeeRepository.findById(employeeId);
+  if (!employee) throw errors.notFound("Employee");
+  return employee;
+}
+
+async function ensureEmployeeHasNoCards(
+  type: cardRepository.TransactionTypes,
+  employeeId: number
+) {
+  const card = await cardRepository.findByTypeAndEmployeeId(type, employeeId);
+
+  if (card) throw errors.conflict(`Type of card to employee`);
+}
+
+function generateCardData(employee: employeeRepository.Employee) {
+  const cvv = faker.finance.creditCardCVV();
+  const creditCardNumber = faker.finance.creditCardNumber("mastercard");
+  const expirationDate = dayjs().add(5, "years").format("MM/YY");
+  const securityCode = bcryptService.encrypt(cvv);
+  const cardholderName = formatName(employee.fullName);
+
+  return {
+    number: creditCardNumber,
+    securityCode,
+    cardholderName,
+    isVirtual: false,
+    isBlocked: true,
+    expirationDate,
+  };
+}
+
+export interface DigitalCard {
+  cardId: number;
+  password: string;
+  securityCode: string;
+}
+
+export async function createDigitalCard(data: DigitalCard) {
   const { cardId, password } = data;
 
   const card = await findCardById(cardId);
@@ -36,7 +79,33 @@ export async function createDigitalCard(data: any) {
   await cardRepository.insert(digitalCardData);
 }
 
-export async function activateCard(data: any) {
+async function ensureHasNoDigitalCard(card: cardRepository.Card) {
+  const digitalCard = await cardRepository.findDigitalById(card.id);
+
+  if (digitalCard) throw errors.conflict("Digital card");
+}
+
+function generateDigitalCard(card: cardRepository.Card) {
+  const cvv = faker.finance.creditCardCVV();
+  const securityCode = bcryptService.encrypt(cvv);
+
+  const digitalCard = {
+    number: faker.finance.creditCardNumber("mastercard"),
+    password: card.password,
+    securityCode,
+    expirationDate: dayjs().add(5, "years").format("MM/YY"),
+    isBlocked: false,
+    isVirtual: true,
+    originalCardId: card.id,
+    type: card.type,
+    cardholderName: card.cardholderName,
+    employeeId: card.employeeId,
+  };
+
+  return digitalCard;
+}
+
+export async function activateCard(data: DigitalCard) {
   const { cardId, password, securityCode } = data;
 
   const card = await ensureCardIsValid(cardId, false);
@@ -51,7 +120,7 @@ export async function activateCard(data: any) {
   });
 }
 
-export async function blockCard(data: any) {
+export async function blockCard(data: DigitalCard) {
   const { cardId, password } = data;
 
   const card = await ensureCardIsValid(cardId, true);
@@ -59,6 +128,28 @@ export async function blockCard(data: any) {
   bcryptService.validateAccess(password, card.password);
 
   await cardRepository.update(cardId, { isBlocked: true });
+}
+
+async function ensureCardIsValid(cardId: number, blockVerification: boolean) {
+  const card = await findCardById(cardId);
+
+  ensureCardIsNotExpired(card);
+
+  if (card.isVirtual) throw errors.unauthorized("Card is virtual so");
+
+  if (blockVerification) {
+    if (card.isBlocked) throw errors.unauthorized("Card is blocked so");
+  } else {
+    if (!card.isBlocked) throw errors.unauthorized("Card is active so");
+  }
+
+  return card;
+}
+
+export function ensureCardIsNotExpired(card: cardRepository.Card) {
+  const cardIsExpired = dayjs(card.expirationDate, "MM/YY").isAfter(dayjs());
+
+  if (cardIsExpired) throw errors.unauthorized("Card is expired so");
 }
 
 export async function getCardBalance(cardId: number) {
@@ -85,12 +176,6 @@ export async function deleteDigitalCard(cardId: number, password: string) {
   cardRepository.remove(card.id);
 }
 
-async function ensureHasNoDigitalCard(card: cardRepository.Card) {
-  const digitalCard = await cardRepository.findDigitalById(card.id);
-
-  if (digitalCard) throw errors.conflict("Digital card");
-}
-
 async function calculateBalance(cardId: number) {
   function calculateTotal(array: any[]) {
     return array.reduce((total, transaction) => total + transaction.amount, 0);
@@ -109,84 +194,10 @@ async function calculateBalance(cardId: number) {
   };
 }
 
-async function ensureCardIsValid(cardId: number, blockVerification: boolean) {
-  const card = await findCardById(cardId);
-
-  const cardIsExpired = dayjs(card.expirationDate, "MM/YY").isAfter(dayjs());
-
-  if (cardIsExpired) throw errors.unauthorized("Card is expired so")
-
-  if (card.isVirtual) throw errors.unauthorized("Card is virtual so");
-
-  if (blockVerification) {
-    if (card.isBlocked) throw errors.unauthorized("Card is blocked so");
-  } else {
-    if (!card.isBlocked) throw errors.unauthorized("Card is active so");
-  }
-
-  return card;
-}
-
 async function findCardById(cardId: number) {
   const card = await cardRepository.findById(cardId);
-
   if (!card) throw errors.notFound("Card");
-
   return card;
-}
-
-async function ensureEmployeeHasNoCards(
-  type: cardRepository.TransactionTypes,
-  employeeId: number
-) {
-  const card = await cardRepository.findByTypeAndEmployeeId(type, employeeId);
-
-  if (card) throw errors.conflict(`Type of card to employee`);
-}
-
-async function ensureEmployeeExists(employeeId: number) {
-  const employee = await employeeRepository.findById(employeeId);
-
-  if (employee) return employee;
-
-  throw errors.notFound("Employee");
-}
-
-function generateCardData(employee: employeeRepository.Employee) {
-  const cvv = faker.finance.creditCardCVV();
-  const creditCardNumber = faker.finance.creditCardNumber("mastercard");
-  const expirationDate = dayjs().add(5, "years").format("MM/YY");
-  const securityCode = bcryptService.encrypt(cvv);
-  const cardholderName = formatName(employee.fullName);
-
-  return {
-    number: creditCardNumber,
-    securityCode,
-    cardholderName,
-    isVirtual: false,
-    isBlocked: true,
-    expirationDate,
-  };
-}
-
-function generateDigitalCard(card: cardRepository.Card) {
-  const cvv = faker.finance.creditCardCVV();
-  const securityCode = bcryptService.encrypt(cvv);
-
-  const digitalCard = {
-    number: faker.finance.creditCardNumber("mastercard"),
-    password: card.password,
-    securityCode,
-    expirationDate: dayjs().add(5, "years").format("MM/YY"),
-    isBlocked: false,
-    isVirtual: true,
-    originalCardId: card.id,
-    type: card.type,
-    cardholderName: card.cardholderName,
-    employeeId: card.employeeId,
-  };
-
-  return digitalCard;
 }
 
 function formatName(name: string) {
@@ -202,17 +213,4 @@ function formatName(name: string) {
     .join(" ");
 
   return formattedName.toUpperCase();
-}
-
-function validateCardType(type: string) {
-  const validTypes = [
-    "groceries",
-    "restaurant",
-    "transport",
-    "education",
-    "health",
-  ];
-
-  if (!validTypes.includes(type))
-    throw errors.unprocessableEntity(`CardType '${type}'`);
 }

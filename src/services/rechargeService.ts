@@ -1,7 +1,7 @@
 import * as errors from "../errors/errors.js";
 import * as cardRepository from "../repositories/cardRepository.js";
+import * as cardService from "../services/cardsServices.js";
 import * as rechargeRepository from "../repositories/rechargeRepository.js";
-import dayjs from "dayjs";
 
 export async function insertRecharge(cardId: number, amount: number) {
   await ensureCardIsValid(cardId);
@@ -12,9 +12,7 @@ export async function insertRecharge(cardId: number, amount: number) {
 async function ensureCardIsValid(cardId: number){
   const card = await findCard(cardId);
 
-  const cardIsExpired = dayjs(card.expirationDate, "MM/YY").isAfter(dayjs());
-
-  if (cardIsExpired) throw errors.unauthorized("Card is expired so");
+  cardService.ensureCardIsNotExpired(card);
 
   if (card.isVirtual) throw errors.unauthorized("Card is virtual so")
 
