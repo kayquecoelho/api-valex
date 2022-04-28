@@ -7,7 +7,7 @@ import rechargesSchema from "../schemas/rechargesSchema.js";
 const rechargesRouter = Router();
 
 rechargesRouter.post(
-  "/recharges",
+  "/",
   validateAPIToken,
   validateSchema(rechargesSchema),
   insertRecharge

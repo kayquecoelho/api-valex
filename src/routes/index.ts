@@ -5,8 +5,8 @@ import rechargesRouter from "./rechargesRouter.js";
 
 const router = Router();
 
-router.use(cardsRouter);
-router.use(rechargesRouter);
-router.use(paymentsRouter);
+router.use("/cards", cardsRouter);
+router.use("/recharges", rechargesRouter);
+router.use("/payments", paymentsRouter);
 
 export default router;

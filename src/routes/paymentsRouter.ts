@@ -6,13 +6,13 @@ import schemas from "../schemas/index.js";
 const paymentsRouter = Router();
 
 paymentsRouter.post(
-  "/payments/point-of-sale",
+  "/point-of-sale",
   validateSchema(schemas.paymentSchema),
   paymentController.insertPayment
 );
 
 paymentsRouter.post(
-  "/payments/online",
+  "/online",
   validateSchema(schemas.onlinePaymentSchema),
   paymentController.insertOnlinePayment
 );
