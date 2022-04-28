@@ -24,12 +24,11 @@ export async function activateCard(req: Request, res: Response) {
 }
 
 export async function getCardBalance(req: Request, res: Response) {
-  const { id } = req.params;
-  const idNum = Number(id);
+  const cardId = Number(req.params.id) ;
 
-  if(isNaN(idNum)) return res.sendStatus(422);
+  if(isNaN(cardId)) return res.sendStatus(422);
 
-  const result = await cardsService.getCardBalance(idNum);
+  const result = await cardsService.getCardBalance(cardId);
 
   res.send(result);
 }
